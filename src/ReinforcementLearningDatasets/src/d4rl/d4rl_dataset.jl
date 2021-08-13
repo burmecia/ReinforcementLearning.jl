@@ -21,7 +21,7 @@ Represents an iterable dataset of type D4RLDataSet with the following fields:
 `is_shuffle`: Bool, determines if the batches returned by `iterate` are shuffled.
 """
 struct D4RLDataSet{T<:AbstractRNG} <: RLDataSet
-    dataset::Dict{Symbol, Any}
+    dataset::Dict{Symbol,Any}
     repo::String
     dataset_size::Integer
     batch_size::Integer
@@ -50,41 +50,45 @@ The `D4RLDataSet` type is an iterable that fetches batches when used in a for lo
 
 The returned type is an infinite iterator which can be called using `iterate` and will return batches as specified in the dataset.
 """
-function dataset(dataset::String;
-    style=SARTS,
+function dataset(
+    dataset::String;
+    style = SARTS,
     repo = "d4rl",
-    rng = StableRNG(123), 
-    is_shuffle = true, 
-    batch_size=256
+    rng = StableRNG(123),
+    is_shuffle = true,
+    batch_size = 256,
 )
-    
-    try 
-        @datadep_str repo*"-"*dataset 
-    catch 
-        throw("The provided dataset is not available") 
+
+    try
+        @datadep_str repo * "-" * dataset
+    catch
+        throw("The provided dataset is not available")
     end
-        
-    path = @datadep_str repo*"-"*dataset 
+
+    path = @datadep_str repo * "-" * dataset
 
     @assert length(readdir(path)) == 1
     file_name = readdir(path)[1]
-    
-    data = h5open(path*"/"*file_name, "r") do file
+
+    data = h5open(path * "/" * file_name, "r") do file
         read(file)
     end
 
     # sanity checks on data
     d4rl_verify(data)
 
-    dataset = Dict{Symbol, Any}()
-    meta = Dict{String, Any}()
+    dataset = Dict{Symbol,Any}()
+    meta = Dict{String,Any}()
 
     N_samples = size(data["observations"])[2]
-    
-    for (key, d_key) in zip(["observations", "actions", "rewards", "terminals"], Symbol.(["state", "action", "reward", "terminal"]))
-            dataset[d_key] = data[key]
+
+    for (key, d_key) in zip(
+        ["observations", "actions", "rewards", "terminals"],
+        Symbol.(["state", "action", "reward", "terminal"]),
+    )
+        dataset[d_key] = data[key]
     end
-    
+
     for key in keys(data)
         if !(key in ["observations", "actions", "rewards", "terminals"])
             meta[key] = data[key]
@@ -104,9 +108,13 @@ function iterate(ds::D4RLDataSet, state = 0)
 
     if is_shuffle
         inds = rand(rng, 1:size, batch_size)
-        map((x)-> if x <= size x else 1 end, inds)
+        map((x) -> if x <= size
+            x
+        else
+            1
+        end, inds)
     else
-        if (state+1) * batch_size <= size
+        if (state + 1) * batch_size <= size
             inds = state*batch_size+1:(state+1)*batch_size
         else
             return nothing
@@ -114,15 +122,17 @@ function iterate(ds::D4RLDataSet, state = 0)
         state += 1
     end
 
-    batch = (state = copy(ds.dataset[:state][:, inds]),
-    action = copy(ds.dataset[:action][:, inds]),
-    reward = copy(ds.dataset[:reward][inds]),
-    terminal = copy(ds.dataset[:terminal][inds]))
+    batch = (
+        state = copy(ds.dataset[:state][:, inds]),
+        action = copy(ds.dataset[:action][:, inds]),
+        reward = copy(ds.dataset[:reward][inds]),
+        terminal = copy(ds.dataset[:terminal][inds]),
+    )
 
     if style == SARTS
         batch = merge(batch, (next_state = copy(ds.dataset[:state][:, (1).+(inds)]),))
     end
-    
+
     return batch, state
 end
 
@@ -132,11 +142,12 @@ length(ds::D4RLDataSet) = ds.dataset_size
 IteratorEltype(::Type{D4RLDataSet}) = EltypeUnknown() # see if eltype can be known (not sure about carla and adroit)
 
 
-function d4rl_verify(data::Dict{String, Any})
+function d4rl_verify(data::Dict{String,Any})
     for key in ["observations", "actions", "rewards", "terminals"]
         @assert (key in keys(data)) "Expected keys not present in data"
     end
     N_samples = size(data["observations"])[2]
     @assert size(data["rewards"]) == (N_samples,) || size(data["rewards"]) == (1, N_samples)
-    @assert size(data["terminals"]) == (N_samples,) || size(data["terminals"]) == (1, N_samples)
+    @assert size(data["terminals"]) == (N_samples,) ||
+            size(data["terminals"]) == (1, N_samples)
 end

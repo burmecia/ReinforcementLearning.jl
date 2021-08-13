@@ -14,8 +14,8 @@ Represents an iterable dataset of type AtariDataSet with the following fields:
 `meta`: Dict, the metadata provided along with the dataset
 `is_shuffle`: Bool, determines if the batches returned by `iterate` are shuffled.
 """
-struct AtariDataSet{T<:AbstractRNG} <:RLDataSet
-    dataset::Dict{Symbol, Any}
+struct AtariDataSet{T<:AbstractRNG} <: RLDataSet
+    dataset::Dict{Symbol,Any}
     epochs::Vector{Int}
     repo::String
     length::Integer
@@ -48,30 +48,31 @@ The `AtariDataSet` type is an iterable that fetches batches when used in a for l
 
 The returned type is an infinite iterator which can be called using `iterate` and will return batches as specified in the dataset.
 """
-function dataset(game::String,
+function dataset(
+    game::String,
     index::Int,
     epochs::Vector{Int};
-    style=SARTS,
+    style = SARTS,
     repo = "atari-replay-datasets",
-    rng = StableRNG(123), 
-    is_shuffle = true, 
-    batch_size=256
+    rng = StableRNG(123),
+    is_shuffle = true,
+    batch_size = 256,
 )
-    
-    try 
+
+    try
         @datadep_str "$repo-$game-$index"
     catch
-        throw("The provided dataset is not available") 
+        throw("The provided dataset is not available")
     end
-        
-    path = @datadep_str "$repo-$game-$index" 
+
+    path = @datadep_str "$repo-$game-$index"
 
     @assert length(readdir(path)) == 1
     folder_name = readdir(path)[1]
-    
+
     folder_path = "$path/$folder_name"
     files = readdir(folder_path)
-    file_prefixes = collect(Set(map(x->join(split(x,"_")[1:2], "_"), files)))
+    file_prefixes = collect(Set(map(x -> join(split(x, "_")[1:2], "_"), files)))
     fields = map(collect(file_prefixes)) do x
         if split(x, "_")[1] == "\$store\$"
             x = split(x, "_")[2]
@@ -81,7 +82,7 @@ function dataset(game::String,
     end
 
     s_epochs = Set(epochs)
-    
+
     dataset = Dict()
 
     for (prefix, field) in zip(file_prefixes, fields)
@@ -98,9 +99,9 @@ function dataset(game::String,
 
             if haskey(dataset, field)
                 if field == "observation"
-                    dataset[field] = cat(dataset[field], data, dims=3)
+                    dataset[field] = cat(dataset[field], data, dims = 3)
                 else
-                    dataset[field] = cat(dataset[field], data, dims=1)
+                    dataset[field] = cat(dataset[field], data, dims = 1)
                 end
             else
                 dataset[field] = data
@@ -110,24 +111,37 @@ function dataset(game::String,
 
     num_epochs = length(s_epochs)
 
-    atari_verify(dataset, num_epochs) 
+    atari_verify(dataset, num_epochs)
 
     N_samples = size(dataset["observation"])[3]
-    
-    final_dataset = Dict{Symbol, Any}()
-    meta = Dict{String, Any}()
 
-    for (key, d_key) in zip(["observation", "action", "reward", "terminal"], Symbol.(["state", "action", "reward", "terminal"]))
-            final_dataset[d_key] = dataset[key]
+    final_dataset = Dict{Symbol,Any}()
+    meta = Dict{String,Any}()
+
+    for (key, d_key) in zip(
+        ["observation", "action", "reward", "terminal"],
+        Symbol.(["state", "action", "reward", "terminal"]),
+    )
+        final_dataset[d_key] = dataset[key]
     end
-    
+
     for key in keys(dataset)
         if !(key in ["observation", "action", "reward", "terminal"])
             meta[key] = dataset[key]
         end
     end
 
-    return AtariDataSet(final_dataset, epochs, repo, N_samples, batch_size, style, rng, meta, is_shuffle)
+    return AtariDataSet(
+        final_dataset,
+        epochs,
+        repo,
+        N_samples,
+        batch_size,
+        style,
+        rng,
+        meta,
+        is_shuffle,
+    )
 
 end
 
@@ -141,7 +155,7 @@ function iterate(ds::AtariDataSet, state = 0)
     if is_shuffle
         inds = rand(rng, 1:length-1, batch_size)
     else
-        if (state+1) * batch_size <= length
+        if (state + 1) * batch_size <= length
             inds = state*batch_size+1:(state+1)*batch_size
         else
             return nothing
@@ -149,15 +163,17 @@ function iterate(ds::AtariDataSet, state = 0)
         state += 1
     end
 
-    batch = (state = view(ds.dataset[:state], :, :, inds),
-    action = view(ds.dataset[:action], inds),
-    reward = view(ds.dataset[:reward], inds),
-    terminal = view(ds.dataset[:terminal], inds))
+    batch = (
+        state = view(ds.dataset[:state], :, :, inds),
+        action = view(ds.dataset[:action], inds),
+        reward = view(ds.dataset[:reward], inds),
+        terminal = view(ds.dataset[:terminal], inds),
+    )
 
     if style == SARTS
-        batch = merge(batch, (next_state = view(ds.dataset[:state], :, :, (1).+(inds)),))
+        batch = merge(batch, (next_state = view(ds.dataset[:state], :, :, (1) .+ (inds)),))
     end
-    
+
     return batch, state
 end
 
@@ -167,7 +183,8 @@ length(ds::AtariDataSet) = ds.length
 IteratorEltype(::Type{AtariDataSet}) = EltypeUnknown() # see if eltype can be known (not sure about carla and adroit)
 
 function atari_verify(dataset::Dict, num_epochs::Int)
-    @assert size(dataset["observation"]) == (atari_frame_size, atari_frame_size, num_epochs*samples_per_epoch)
+    @assert size(dataset["observation"]) ==
+            (atari_frame_size, atari_frame_size, num_epochs * samples_per_epoch)
     @assert size(dataset["action"]) == (num_epochs * samples_per_epoch,)
     @assert size(dataset["reward"]) == (num_epochs * samples_per_epoch,)
     @assert size(dataset["terminal"]) == (num_epochs * samples_per_epoch,)

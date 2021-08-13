@@ -14,11 +14,7 @@ end
 
 experiments, postprocess_cb, experiments_assets = makedemos("experiments")
 
-assets = [
-    "assets/favicon.ico",
-    "assets/custom.css",
-    experiments_assets
-]
+assets = ["assets/favicon.ico", "assets/custom.css", experiments_assets]
 
 makedocs(
     modules = [
@@ -53,7 +49,7 @@ makedocs(
             "RLEnvs" => "rlenvs.md",
             "RLZoo" => "rlzoo.md",
         ],
-    ]
+    ],
 )
 
 postprocess_cb()

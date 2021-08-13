@@ -32,7 +32,7 @@ function RL.Experiment(
     ::Val{:MADDPG},
     ::Val{:KuhnPoker},
     ::Nothing;
-    seed=123,
+    seed = 123,
 )
     rng = StableRNG(seed)
     env = KuhnPokerEnv()
@@ -40,8 +40,9 @@ function RL.Experiment(
         StateTransformedEnv(
             env;
             state_mapping = s -> [findfirst(==(s), state_space(env))],
-            state_space_mapping = ss -> [[findfirst(==(s), state_space(env))] for s in state_space(env)]
-            ),
+            state_space_mapping = ss ->
+                [[findfirst(==(s), state_space(env))] for s in state_space(env)],
+        ),
         ## add a dummy action for the other agent.
         action_mapping = x -> length(x) == 1 ? x : Int(x[current_player(env)] + 1),
     )
@@ -51,18 +52,18 @@ function RL.Experiment(
     init = glorot_uniform(rng)
 
     create_actor() = Chain(
-            Dense(ns, 64, relu; init = init),
-            Dense(64, 64, relu; init = init),
-            Dense(64, na, tanh; init = init),
-        )
+        Dense(ns, 64, relu; init = init),
+        Dense(64, 64, relu; init = init),
+        Dense(64, na, tanh; init = init),
+    )
 
     create_critic() = Chain(
         Dense(n_players * ns + n_players * na, 64, relu; init = init),
         Dense(64, 64, relu; init = init),
         Dense(64, 1; init = init),
-        )
+    )
 
-    
+
     policy = DDPGPolicy(
         behavior_actor = NeuralNetworkApproximator(
             model = create_actor(),
@@ -92,22 +93,27 @@ function RL.Experiment(
     )
     trajectory = CircularArraySARTTrajectory(
         capacity = 10000, # replay buffer capacity
-        state = Vector{Int} => (ns, ),
-        action = Float32 => (na, ),
+        state = Vector{Int} => (ns,),
+        action = Float32 => (na,),
     )
 
     agents = MADDPGManager(
-        Dict((player, Agent(
-            policy = NamedPolicy(player, deepcopy(policy)),
-            trajectory = deepcopy(trajectory),
-        )) for player in players(env) if player != chance_player(env)),
+        Dict(
+            (
+                player,
+                Agent(
+                    policy = NamedPolicy(player, deepcopy(policy)),
+                    trajectory = deepcopy(trajectory),
+                ),
+            ) for player in players(env) if player != chance_player(env)
+        ),
         128, # batch_size
         128, # update_freq
         0, # step_counter
-        rng
+        rng,
     )
 
-    stop_condition = StopAfterEpisode(100_000, is_show_progress=!haskey(ENV, "CI"))
+    stop_condition = StopAfterEpisode(100_000, is_show_progress = !haskey(ENV, "CI"))
     hook = ResultNEpisode(1000, 0, [], [])
     Experiment(agents, wrapped_env, stop_condition, hook, "# run MADDPG on KuhnPokerEnv")
 end
@@ -116,7 +122,13 @@ end
 using Plots
 ex = E`JuliaRL_MADDPG_KuhnPoker`
 run(ex)
-scatter(ex.hook.episode, ex.hook.results, xaxis=:log, xlabel="episode", ylabel="reward of player 1")
+scatter(
+    ex.hook.episode,
+    ex.hook.results,
+    xaxis = :log,
+    xlabel = "episode",
+    ylabel = "reward of player 1",
+)
 
 savefig("assets/JuliaRL_MADDPG_KuhnPoker.png") #hide
 

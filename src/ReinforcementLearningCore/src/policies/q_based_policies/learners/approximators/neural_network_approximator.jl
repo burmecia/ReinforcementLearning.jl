@@ -78,7 +78,7 @@ Base.@kwdef struct GaussianNetwork{P,U,S}
     pre::P = identity
     μ::U
     logσ::S
-    min_σ::Float32 = 0f0
+    min_σ::Float32 = 0.0f0
     max_σ::Float32 = Inf32
 end
 
@@ -91,15 +91,24 @@ This function is compatible with a multidimensional action space. When outputtin
 - `is_sampling::Bool=false`, whether to sample from the obtained normal distribution. 
 - `is_return_log_prob::Bool=false`, whether to calculate the conditional probability of getting actions in the given state.
 """
-function (model::GaussianNetwork)(rng::AbstractRNG, state; is_sampling::Bool=false, is_return_log_prob::Bool=false)
+function (model::GaussianNetwork)(
+    rng::AbstractRNG,
+    state;
+    is_sampling::Bool = false,
+    is_return_log_prob::Bool = false,
+)
     x = model.pre(state)
-    μ, raw_logσ = model.μ(x), model.logσ(x) 
+    μ, raw_logσ = model.μ(x), model.logσ(x)
     logσ = clamp.(raw_logσ, log(model.min_σ), log(model.max_σ))
     if is_sampling
         π_dist = Normal.(μ, exp.(logσ))
         z = rand.(rng, π_dist)
         if is_return_log_prob
-            logp_π = sum(logpdf.(π_dist, z) .- (2.0f0 .* (log(2.0f0) .- z .- softplus.(-2.0f0 .* z))), dims = 1)
+            logp_π = sum(
+                logpdf.(π_dist, z) .-
+                (2.0f0 .* (log(2.0f0) .- z .- softplus.(-2.0f0 .* z))),
+                dims = 1,
+            )
             return tanh.(z), logp_π
         else
             return tanh.(z)
@@ -109,8 +118,17 @@ function (model::GaussianNetwork)(rng::AbstractRNG, state; is_sampling::Bool=fal
     end
 end
 
-function (model::GaussianNetwork)(state; is_sampling::Bool=false, is_return_log_prob::Bool=false)
-    model(Random.GLOBAL_RNG, state; is_sampling=is_sampling, is_return_log_prob=is_return_log_prob)
+function (model::GaussianNetwork)(
+    state;
+    is_sampling::Bool = false,
+    is_return_log_prob::Bool = false,
+)
+    model(
+        Random.GLOBAL_RNG,
+        state;
+        is_sampling = is_sampling,
+        is_return_log_prob = is_return_log_prob,
+    )
 end
 
 #####
@@ -133,5 +151,5 @@ Flux.@functor DuelingNetwork
 function (m::DuelingNetwork)(state)
     x = m.base(state)
     val = m.val(x)
-    return val .+ m.adv(x) .- mean(m.adv(x), dims=1)
+    return val .+ m.adv(x) .- mean(m.adv(x), dims = 1)
 end

@@ -4,24 +4,75 @@ export atari_init
 const atari_checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 const ATARI_GAMES = [
-    "air-raid", "alien", "amidar", "assault", "asterix",
-    "asteroids", "atlantis", "bank-heist", "battle-zone", "beam-rider",
-    "berzerk", "bowling", "boxing", "breakout", "carnival", "centipede",
-    "chopper-command", "crazy-climber", "demon-attack",
-    "double-dunk", "elevator-action", "enduro", "fishing-derby", "freeway",
-    "frostbite", "gopher", "gravitar", "hero", "ice-hockey", "jamesbond",
-    "journey-escape", "kangaroo", "krull", "kung-fu-master",
-    "montezuma-revenge", "ms-pacman", "name-this-game", "phoenix",
-    "pitfall", "pong", "pooyan", "private-eye", "qbert", "riverraid",
-    "road-runner", "robotank", "seaquest", "skiing", "solaris",
-    "space-invaders", "star-gunner", "tennis", "time-pilot", "tutankham",
-    "up-n-down", "venture", "video-pinball", "wizard-of-wor",
-    "yars-revenge", "zaxxon"
+    "air-raid",
+    "alien",
+    "amidar",
+    "assault",
+    "asterix",
+    "asteroids",
+    "atlantis",
+    "bank-heist",
+    "battle-zone",
+    "beam-rider",
+    "berzerk",
+    "bowling",
+    "boxing",
+    "breakout",
+    "carnival",
+    "centipede",
+    "chopper-command",
+    "crazy-climber",
+    "demon-attack",
+    "double-dunk",
+    "elevator-action",
+    "enduro",
+    "fishing-derby",
+    "freeway",
+    "frostbite",
+    "gopher",
+    "gravitar",
+    "hero",
+    "ice-hockey",
+    "jamesbond",
+    "journey-escape",
+    "kangaroo",
+    "krull",
+    "kung-fu-master",
+    "montezuma-revenge",
+    "ms-pacman",
+    "name-this-game",
+    "phoenix",
+    "pitfall",
+    "pong",
+    "pooyan",
+    "private-eye",
+    "qbert",
+    "riverraid",
+    "road-runner",
+    "robotank",
+    "seaquest",
+    "skiing",
+    "solaris",
+    "space-invaders",
+    "star-gunner",
+    "tennis",
+    "time-pilot",
+    "tutankham",
+    "up-n-down",
+    "venture",
+    "video-pinball",
+    "wizard-of-wor",
+    "yars-revenge",
+    "zaxxon",
 ]
 
 function fetch_atari_ds(src, dest)
-    try run(`which gsutil`) catch x throw("gsutil not found, install gsutil to proceed further") end
-    
+    try
+        run(`which gsutil`)
+    catch x
+        throw("gsutil not found, install gsutil to proceed further")
+    end
+
     run(`gsutil -m cp -r $src $dest`)
     return dest
 end
@@ -50,8 +101,8 @@ function atari_init()
                     encountered during training into 5 replay datasets per game, resulting in a total of 300 datasets.
                     """,
                     "gs://atari-replay-datasets/dqn/$(game_name(game))/$index/replay_logs/";
-                    fetch_method = fetch_atari_ds
-                )
+                    fetch_method = fetch_atari_ds,
+                ),
             )
         end
     end
